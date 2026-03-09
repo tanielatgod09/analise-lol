@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+  # --- Banco de Dados PostgreSQL ---
+  db:
+    image: postgres:16-alpine
+    container_name: analise_lol_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: analise_lol
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: senha_segura
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Backend FastAPI ---
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: analise_lol_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:senha_segura@db:5432/analise_lol
+      APP_ENV: production
+      APP_HOST: 0.0.0.0
+      APP_PORT: 8000
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./ml_models:/app/ml_models
+      - ./logs:/app/logs
+
+  # --- Frontend React (Nginx) ---
+  frontend:
+    image: node:20-alpine
+    container_name: analise_lol_frontend
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "3000:3000"
+    command: sh -c "npm install && npm start"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
