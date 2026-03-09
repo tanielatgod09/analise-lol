@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>⚔️ LoL Betting Analysis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1923;
+      --card: #1a2634;
+      --card2: #1f2f40;
+      --border: #243447;
+      --accent: #00d4ff;
+      --green: #00ff88;
+      --red: #ff4d6d;
+      --yellow: #ffd60a;
+      --text: #e2e8f0;
+      --muted: #8899aa;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 48px;
+    }
+
+    /* ── Header ── */
+    header {
+      background: linear-gradient(135deg, #0d1b2a 0%, #1a2634 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .status-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.offline { background: var(--red); box-shadow: 0 0 8px var(--red); animation: none; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 24px 16px; }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ── Summary Cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .summary-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .summary-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+
+    .summary-label { font-size: 0.8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .summary-value { font-size: 2rem; font-weight: 800; margin-top: 6px; color: var(--accent); }
+    .summary-sub { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 32px; }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: var(--card2); }
+    th { padding: 12px 16px; text-align: left; font-size: 0.78rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+    td { padding: 12px 16px; font-size: 0.9rem; border-top: 1px solid var(--border); }
+    tr:hover td { background: rgba(0,212,255,0.04); }
+
+    .team-vs { font-weight: 700; color: var(--text); }
+    .team-vs .vs { color: var(--muted); font-weight: 400; margin: 0 6px; }
+
+    .league-badge {
+      display: inline-block;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .status-tag {
+      display: inline-block;
+      border-radius: 50px;
+      padding: 3px 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+    .status-tag.upcoming { background: rgba(0,212,255,0.15); color: var(--accent); }
+    .status-tag.live { background: rgba(255,77,109,0.2); color: var(--red); animation: pulse 1.5s infinite; }
+    .status-tag.finished { background: rgba(0,255,136,0.1); color: var(--green); }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--accent); color: #0f1923;
+      border: none; border-radius: 6px; padding: 6px 14px;
+      font-size: 0.8rem; font-weight: 700; cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .btn:hover { opacity: 0.85; transform: scale(1.02); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+    /* ── Bet Cards ── */
+    .bet-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .bet-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .bet-card:hover { transform: translateY(-2px); border-color: var(--accent); }
+
+    .bet-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 8px; }
+    .bet-market { font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+    .bet-selection { font-size: 1rem; font-weight: 700; margin-top: 2px; }
+
+    .bet-meta { font-size: 0.8rem; color: var(--muted); margin-bottom: 12px; }
+
+    .bet-odds { display: flex; gap: 16px; margin-bottom: 14px; }
+    .bet-stat { display: flex; flex-direction: column; gap: 2px; }
+    .bet-stat-label { font-size: 0.72rem; color: var(--muted); }
+    .bet-stat-value { font-size: 1.1rem; font-weight: 800; }
+    .ev-positive { color: var(--green); }
+    .ev-negative { color: var(--red); }
+
+    .prob-bar-wrap { margin-bottom: 12px; }
+    .prob-bar-label { display: flex; justify-content: space-between; font-size: 0.78rem; margin-bottom: 4px; }
+    .prob-bar-track { height: 6px; background: var(--card2); border-radius: 3px; overflow: hidden; }
+    .prob-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--green)); transition: width 0.6s ease; }
+
+    .class-badge {
+      display: inline-block; border-radius: 50px; padding: 4px 10px; font-size: 0.72rem; font-weight: 700;
+    }
+    .class-muito_segura { background: rgba(0,255,136,0.15); color: var(--green); border: 1px solid rgba(0,255,136,0.3); }
+    .class-boa { background: rgba(0,212,255,0.15); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+    .class-moderada { background: rgba(255,214,10,0.15); color: var(--yellow); border: 1px solid rgba(255,214,10,0.3); }
+    .class-arriscada { background: rgba(255,77,109,0.15); color: var(--red); border: 1px solid rgba(255,77,109,0.3); }
+
+    /* ── Analysis Section ── */
+    .analysis-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 32px;
+    }
+
+    .input-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .input-field {
+      flex: 1; min-width: 200px;
+      background: var(--card2); border: 1px solid var(--border); border-radius: 8px;
+      padding: 10px 14px; color: var(--text); font-size: 0.9rem; font-family: inherit;
+      outline: none;
+    }
+    .input-field:focus { border-color: var(--accent); }
+
+    #analysis-result {
+      margin-top: 16px;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: none;
+    }
+
+    .analysis-item { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    .analysis-item:last-child { border-bottom: none; }
+    .analysis-key { color: var(--muted); }
+    .analysis-val { font-weight: 600; }
+
+    /* ── Empty / Error states ── */
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .empty-state .emoji { font-size: 2rem; margin-bottom: 8px; }
+
+    /* ── Spinner ── */
+    .spinner {
+      display: inline-block;
+      width: 20px; height: 20px;
+      border: 3px solid rgba(0,212,255,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading-row { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 32px; color: var(--muted); }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      padding: 24px 16px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.6;
+    }
+
+    footer strong { color: var(--red); }
+
+    /* ── Refresh ── */
+    .refresh-info { font-size: 0.78rem; color: var(--muted); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    #countdown { color: var(--accent); font-weight: 600; }
+
+    @media (max-width: 600px) {
+      .header-title { font-size: 1.2rem; }
+      .summary-value { font-size: 1.6rem; }
+      td, th { padding: 10px 10px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="header-title">⚔️ LoL Betting Analysis</span>
+  <div class="status-badge">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Conectando…</span>
+  </div>
+</header>
+
+<div class="container">
+
+  <p class="refresh-info">🔄 Atualização automática em <span id="countdown">60</span>s</p>
+
+  <!-- ── Summary Cards ── -->
+  <h2 class="section-title">📊 Resumo</h2>
+  <div class="summary-grid" id="summary-grid">
+    <div class="loading-row"><span class="spinner"></span> Carregando…</div>
+  </div>
+
+  <!-- ── Upcoming Matches ── -->
+  <h2 class="section-title">🎮 Próximas Partidas</h2>
+  <div class="table-wrap" id="matches-table-wrap">
+    <div class="loading-row"><span class="spinner"></span> Carregando partidas…</div>
+  </div>
+
+  <!-- ── Highlighted Bets ── -->
+  <h2 class="section-title">💰 Apostas Recomendadas</h2>
+  <div class="bet-grid" id="bets-grid">
+    <div class="loading-row"><span class="spinner"></span> Carregando apostas…</div>
+  </div>
+
+  <!-- ── Quick Analysis ── -->
+  <h2 class="section-title">🔍 Análise Rápida</h2>
+  <div class="analysis-box">
+    <p style="font-size:0.85rem;color:var(--muted);margin-bottom:14px;">Digite o ID de uma partida para gerar uma análise completa com probabilidades, previsões e apostas recomendadas.</p>
+    <div class="input-row">
+      <input class="input-field" id="match-id-input" type="text" placeholder="ID da partida (ex: 12345)" />
+      <button class="btn" id="analyze-btn" onclick="analyzeMatch()">⚡ Analisar</button>
+    </div>
+    <div id="analysis-result"></div>
+  </div>
+
+</div>
+
+<footer>
+  <strong>⚠️ AVISO IMPORTANTE:</strong> Este sistema é para fins informativos e analíticos apenas.<br>
+  Apostas envolvem risco financeiro. Nunca aposte mais do que pode perder. Jogue com responsabilidade.
+</footer>
+
+<script>
+  const API = '';   // mesma origem
+
+  // ── Countdown & Auto-refresh ────────────────────────────────────────────────
+  let secondsLeft = 60;
+  const countdownEl = document.getElementById('countdown');
+  setInterval(() => {
+    secondsLeft--;
+    if (secondsLeft <= 0) { secondsLeft = 60; loadAll(); }
+    countdownEl.textContent = secondsLeft;
+  }, 1000);
+
+  // ── Utilities ───────────────────────────────────────────────────────────────
+  function fmt(v, fallback = '—') {
+    return (v !== null && v !== undefined) ? v : fallback;
+  }
+
+  function fmtPct(v) {
+    if (v === null || v === undefined) return '—';
+    const n = parseFloat(v);
+    return isNaN(n) ? '—' : (n * 100).toFixed(1) + '%';
+  }
+
+  function fmtOdd(v) {
+    if (v === null || v === undefined) return '—';
+    const n = parseFloat(v);
+    return isNaN(n) ? '—' : n.toFixed(2);
+  }
+
+  function fmtEV(v) {
+    if (v === null || v === undefined) return '—';
+    const n = parseFloat(v);
+    if (isNaN(n)) return '—';
+    const sign = n >= 0 ? '+' : '';
+    return sign + (n * 100).toFixed(1) + '%';
+  }
+
+  function fmtDate(str) {
+    if (!str) return '—';
+    try { return new Date(str).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }); }
+    catch { return str; }
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function setStatus(online) {
+    const dot = document.getElementById('status-dot');
+    const txt = document.getElementById('status-text');
+    dot.className = 'status-dot' + (online ? '' : ' offline');
+    txt.textContent = online ? 'Sistema Online' : 'Sistema Offline';
+  }
+
+  // ── Fetch helper ────────────────────────────────────────────────────────────
+  async function apiFetch(path) {
+    const res = await fetch(API + path);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
+  // ── Load All ─────────────────────────────────────────────────────────────────
+  async function loadAll() {
+    secondsLeft = 60;
+    await Promise.all([loadSummary(), loadMatches(), loadBets()]);
+  }
+
+  // ── Summary ──────────────────────────────────────────────────────────────────
+  async function loadSummary() {
+    const el = document.getElementById('summary-grid');
+    try {
+      const data = await apiFetch('/api/v1/dashboard/');
+      setStatus(true);
+      el.innerHTML = `
+        <div class="summary-card">
+          <div class="summary-label">Total de Times</div>
+          <div class="summary-value">${fmt(data.total_times, '0')}</div>
+          <div class="summary-sub">registrados</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Total de Partidas</div>
+          <div class="summary-value">${fmt(data.total_partidas, '0')}</div>
+          <div class="summary-sub">no banco de dados</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Partidas Hoje</div>
+          <div class="summary-value">${fmt(data.partidas_hoje, '0')}</div>
+          <div class="summary-sub">agendadas</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Apostas em Destaque</div>
+          <div class="summary-value">${fmt(data.apostas_destaque, '0')}</div>
+          <div class="summary-sub">EV positivo</div>
+        </div>
+      `;
+    } catch {
+      setStatus(false);
+      el.innerHTML = `
+        <div class="summary-card">
+          <div class="summary-label">Total de Times</div>
+          <div class="summary-value" style="color:var(--muted)">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Total de Partidas</div>
+          <div class="summary-value" style="color:var(--muted)">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Partidas Hoje</div>
+          <div class="summary-value" style="color:var(--muted)">—</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">Apostas em Destaque</div>
+          <div class="summary-value" style="color:var(--muted)">—</div>
+        </div>
+      `;
+    }
+  }
+
+  // ── Matches ───────────────────────────────────────────────────────────────────
+  async function loadMatches() {
+    const el = document.getElementById('matches-table-wrap');
+    try {
+      const data = await apiFetch('/api/v1/matches/upcoming');
+      const matches = Array.isArray(data) ? data : (data.partidas || data.matches || []);
+      if (!matches.length) {
+        el.innerHTML = `<div class="empty-state"><div class="emoji">📊</div>Nenhuma partida encontrada ainda.<br><span style="font-size:0.8rem">🔄 Coletando dados... Aguarde alguns minutos.</span></div>`;
+        return;
+      }
+      const rows = matches.map(m => {
+        const blue = escHtml(fmt(m.time_azul || m.blue_team || m.home_team, '?'));
+        const red  = escHtml(fmt(m.time_vermelho || m.red_team || m.away_team, '?'));
+        const league = escHtml(fmt(m.liga || m.league || m.tournament, '—'));
+        const date = fmtDate(m.data_inicio || m.scheduled_at || m.start_time);
+        const status = m.status || 'upcoming';
+        const statusLabel = { upcoming: 'Agendado', live: 'AO VIVO', in_progress: 'AO VIVO', finished: 'Encerrado', completed: 'Encerrado' }[status] || status;
+        const statusClass = { live: 'live', in_progress: 'live', finished: 'finished', completed: 'finished' }[status] || 'upcoming';
+        return `<tr>
+          <td><span class="league-badge">${league}</span></td>
+          <td class="team-vs">${blue}<span class="vs">vs</span>${red}</td>
+          <td>${date}</td>
+          <td><span class="status-tag ${statusClass}">${statusLabel}</span></td>
+          <td><button class="btn" onclick="document.getElementById('match-id-input').value='${escHtml(String(m.id || ''))}';document.querySelector('.analysis-box').scrollIntoView({behavior:'smooth'})">🔍 Analisar</button></td>
+        </tr>`;
+      }).join('');
+      el.innerHTML = `<table>
+        <thead><tr><th>Liga</th><th>Confronto</th><th>Horário</th><th>Status</th><th>Ação</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    } catch {
+      el.innerHTML = `<div class="empty-state"><div class="emoji">📊</div>Nenhuma partida encontrada ainda.<br><span style="font-size:0.8rem">🔄 Coletando dados... Aguarde alguns minutos.</span></div>`;
+    }
+  }
+
+  // ── Highlighted Bets ─────────────────────────────────────────────────────────
+  async function loadBets() {
+    const el = document.getElementById('bets-grid');
+    try {
+      const data = await apiFetch('/api/v1/predictions/highlighted');
+      const bets = Array.isArray(data) ? data : (data.apostas || data.predictions || data.recommendations || []);
+      if (!bets.length) {
+        el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="emoji">💰</div>Nenhuma aposta em destaque no momento.<br><span style="font-size:0.8rem">🔄 Coletando dados... Aguarde alguns minutos.</span></div>`;
+        return;
+      }
+      el.innerHTML = bets.map(b => {
+        const cls = b.classificacao || b.classification || 'moderada';
+        const clsLabel = { muito_segura: 'Muito Segura', boa: 'Boa', moderada: 'Moderada', arriscada: 'Arriscada' }[cls] || cls;
+        const prob = parseFloat(b.probabilidade_real || b.real_probability || b.probability || 0);
+        const ev = parseFloat(b.ev || b.expected_value || 0);
+        const evClass = ev >= 0 ? 'ev-positive' : 'ev-negative';
+        return `
+        <div class="bet-card">
+          <div class="bet-header">
+            <div>
+              <div class="bet-market">${escHtml(fmt(b.mercado || b.market, 'Mercado'))}</div>
+              <div class="bet-selection">${escHtml(fmt(b.selecao || b.selection || b.team, 'Seleção'))}</div>
+            </div>
+            <span class="class-badge class-${cls}">${clsLabel}</span>
+          </div>
+          <div class="bet-meta">🏦 ${escHtml(fmt(b.casa_de_apostas || b.bookmaker || b.bookie, '—'))}</div>
+          <div class="bet-odds">
+            <div class="bet-stat">
+              <span class="bet-stat-label">Odd</span>
+              <span class="bet-stat-value">${fmtOdd(b.odd || b.odds)}</span>
+            </div>
+            <div class="bet-stat">
+              <span class="bet-stat-label">EV</span>
+              <span class="bet-stat-value ${evClass}">${fmtEV(b.ev || b.expected_value)}</span>
+            </div>
+            <div class="bet-stat">
+              <span class="bet-stat-label">Kelly</span>
+              <span class="bet-stat-value">${b.kelly_fraction ? (parseFloat(b.kelly_fraction)*100).toFixed(1)+'%' : '—'}</span>
+            </div>
+          </div>
+          <div class="prob-bar-wrap">
+            <div class="prob-bar-label">
+              <span>Probabilidade Real</span>
+              <span>${fmtPct(prob)}</span>
+            </div>
+            <div class="prob-bar-track">
+              <div class="prob-bar-fill" style="width:${Math.min(100, prob*100).toFixed(1)}%"></div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    } catch {
+      el.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="emoji">💰</div>Nenhuma aposta em destaque no momento.<br><span style="font-size:0.8rem">🔄 Coletando dados... Aguarde alguns minutos.</span></div>`;
+    }
+  }
+
+  // ── Quick Analysis ────────────────────────────────────────────────────────────
+  async function analyzeMatch() {
+    const id = document.getElementById('match-id-input').value.trim();
+    const btn = document.getElementById('analyze-btn');
+    const result = document.getElementById('analysis-result');
+    if (!id) {
+      result.style.display = 'block';
+      result.innerHTML = '<div class="empty-state">⚠️ Digite o ID da partida antes de analisar.</div>';
+      return;
+    }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Analisando…';
+    result.style.display = 'block';
+    result.innerHTML = '<div class="loading-row"><span class="spinner"></span> Gerando análise completa…</div>';
+    try {
+      const data = await (await fetch(`${API}/api/v1/predictions/match/${encodeURIComponent(id)}/generate`, { method: 'POST' })).json();
+      const prob = data.probabilidade_vitoria || data.win_probability || data.probability;
+      const items = [
+        ['Partida', fmt(data.match_id || id)],
+        ['Probabilidade de Vitória', fmtPct(prob)],
+        ['Previsão de Kills', fmt(data.kills_previstos || data.predicted_kills)],
+        ['Duração Estimada', fmt(data.duracao_estimada || data.estimated_duration)],
+        ['Upset Risk', fmt(data.upset_risk_score)],
+        ['Total de Apostas', fmt(data.total_apostas || (data.apostas && data.apostas.length))],
+      ].filter(([,v]) => v !== '—' && v !== undefined && v !== null);
+      result.innerHTML = items.map(([k,v]) => `<div class="analysis-item"><span class="analysis-key">${escHtml(k)}</span><span class="analysis-val">${escHtml(String(v))}</span></div>`).join('') || '<div class="empty-state">Nenhum dado retornado para esta partida.</div>';
+    } catch {
+      result.innerHTML = '<div class="empty-state">⚠️ Não foi possível gerar a análise. Verifique se o ID é válido.</div>';
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '⚡ Analisar';
+    }
+  }
+
+  document.getElementById('match-id-input').addEventListener('keydown', e => { if (e.key === 'Enter') analyzeMatch(); });
+
+  // ── Init ──────────────────────────────────────────────────────────────────────
+  loadAll();
+</script>
+</body>
+</html>
